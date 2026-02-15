@@ -6,7 +6,7 @@ export class userAccountDetails {
         public plainPassword: string,
         public firstName: string,
         public lastName: string,
-        public encryptedPassword: string,
+        public hashedPassword: string,
         public middleInitial?: string
     ) { }
 

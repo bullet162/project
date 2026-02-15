@@ -3,7 +3,6 @@ export class userAccountDetails {
         public id: number,
         public username: string,
         public email: string,
-        public plainPassword: string,
         public firstName: string,
         public lastName: string,
         public hashedPassword: string,

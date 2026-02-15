@@ -1,0 +1,43 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js",
+    "build": "npx tsc src/index.ts",
+    "dev": "npx tsx src/index.ts",
+    "lint": "npx @biomejs/biome lint --write src",
+    "format": "npx @biomejs/biome format --write src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bullet162/project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/bullet162/project/issues"
+  },
+  "homepage": "https://github.com/bullet162/project#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.15",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.2.3",
+    "express": "^5.2.1",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.3.1",
+    "jsonwebtoken": "^9.0.3"
+  }
+}

@@ -18,8 +18,10 @@ export class UseBcrypt {
         }
     }
 
-    async VerifyPassword(plainPassword: string, hashedPassword: string): Promise<{ verdict: boolean } | { error: string }> {
+    async VerifyPassword(plainPassword: string): Promise<{ verdict: boolean } | { error: string }> {
         try {
+            //sample password but need database
+            const hashedPassword = String(process.env.SAMPLE_PASSWORD);
             const verdict = await bcrypt.compare(plainPassword, hashedPassword);
 
             return { verdict: verdict };

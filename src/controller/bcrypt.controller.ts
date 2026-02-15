@@ -19,19 +19,14 @@ export const IHashPassword = async (req: Request, res: Response) => {
 export const IVerifyPassword = async (req: Request, res: Response) => {
     try {
         // hashedPassword property from database to be develop soon.
-        const { plainPassword, hashedPassword } = req.body;
+        const { plainPassword } = req.body;
 
-        if (!plainPassword || !hashedPassword)
-            return res.status(400).json({ error: "Password required" });
+        if (!plainPassword)
+            return res.status(400).json({ error: "Password required", isLogged: false });
 
-        const result = await bcrypt.VerifyPassword(plainPassword, hashedPassword);
+        const result = await bcrypt.VerifyPassword(plainPassword);
 
-        if ('verdict' in result === true) {
-            return res.status(200).json({ message: "Login successful!", isLogged: true });
-        }
-        else {
-            return res.status(401).json({ message: 'Invalid password', isLogged: false });
-        }
+        return res.status(200).json(result);
 
     }
     catch (error) {

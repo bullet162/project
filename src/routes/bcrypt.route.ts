@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { IHashPassword, IVerifyPassword } from "../controller/bcrypt.controller";
+import { Router } from 'express';
+import { IHashPassword, IVerifyPassword } from '../controller/bcrypt.controller';
 
 export const bcryptRouter = Router();
 
-bcryptRouter.post('/registerPassword', IHashPassword);
-bcryptRouter.post('/verifyPassword', IVerifyPassword);
+bcryptRouter.post('/hash', IHashPassword);
+bcryptRouter.post('/verify', IVerifyPassword);

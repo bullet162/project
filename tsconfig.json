@@ -8,7 +8,9 @@
     // See also https://aka.ms/tsconfig/module
     "module": "es2022",
     "target": "es2022",
-    "types": [],
+    "types": [
+      "reflect-metadata"
+    ],
     // For nodejs:
     "lib": [
       "es2022"
@@ -37,7 +39,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": [
     "src/**/*"

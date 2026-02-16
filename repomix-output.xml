@@ -1,0 +1,393 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: node_modules, dist, .gitignore, package-lock.json, README.md
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+biome.json
+package.json
+src/controller/bcrypt.controller.ts
+src/index.ts
+src/middleware/validation.middleware.ts
+src/modules/AccountDetails.module.ts
+src/routes/bcrypt.route.ts
+src/services/bcrypt.service.ts
+src/views/index.html
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/middleware/validation.middleware.ts">
+import { plainToInstance } from 'class-transformer';
+import { validate, ValidationError } from 'class-validator';
+import type { Request, Response, NextFunction } from 'express';
+
+export function validationMiddleware(type: any) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+        const dtoInstance = plainToInstance(type, req.body);
+
+        const errors: ValidationError[] = await validate(dtoInstance);
+
+        if (errors.length > 0) {
+            const message = errors.map((error: ValidationError) =>
+                Object.values(error.constraints || {})
+            ).flat();
+
+            return res.status(400).json({ errors: message });
+        }
+
+        req.body = dtoInstance;
+        next();
+    };
+}
+</file>
+
+<file path="biome.json">
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": [
+			"!!**node_modules",
+			"!!**/dist",
+			"src/**/*"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}
+</file>
+
+<file path="src/routes/bcrypt.route.ts">
+import { Router } from "express";
+import { IHashPassword, IVerifyPassword } from "../controller/bcrypt.controller";
+import { validationMiddleware } from "../middleware/validation.middleware";
+import { UserPassword } from "../modules/AccountDetails.module";
+
+export const bcryptRouter = Router();
+
+bcryptRouter.post('/registerPassword', validationMiddleware(UserPassword), IHashPassword);
+bcryptRouter.post('/verifyPassword', validationMiddleware(UserPassword), IVerifyPassword);
+</file>
+
+<file path="src/views/index.html">
+
+</file>
+
+<file path="src/controller/bcrypt.controller.ts">
+import type { Request, Response } from "express";
+import { UseBcrypt } from "../services/bcrypt.service";
+import { error } from "node:console";
+
+const bcrypt = new UseBcrypt();
+
+export const IHashPassword = async (req: Request, res: Response) => {
+    try {
+        const { plainPassword } = req.body;
+
+        const result = await bcrypt.hashPassword(plainPassword);
+
+        return res.status(201).json(result);
+    }
+    catch (error) {
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+}
+
+export const IVerifyPassword = async (req: Request, res: Response) => {
+    try {
+        // hashedPassword property from database to be develop soon.
+        const { plainPassword } = req.body;
+
+        const result = await bcrypt.VerifyPassword(plainPassword);
+
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        return res.status(500).json({ error: "Verification process failed" });
+    }
+}
+</file>
+
+<file path="src/services/bcrypt.service.ts">
+import * as bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+import { UserPassword } from '../modules/AccountDetails.module';
+dotenv.config();
+
+
+export class UseBcrypt {
+
+    async hashPassword(plainPassword: UserPassword): Promise<{ hashedPassword: string } | { error: string }> {
+        try {
+            const saltRounds = Number(process.env.SALT_ROUNDS) || 12;
+            const hashedPassword = await bcrypt.hash(plainPassword.plainPassword, saltRounds);
+
+            return { hashedPassword: hashedPassword };
+        }
+        catch (error) {
+            console.error('Cannot encrypt password. ', error);
+
+            throw error;
+        }
+    }
+
+    async VerifyPassword(plainPassword: UserPassword): Promise<{ verdict: boolean } | { error: string }> {
+        try {
+            //sample password but need database
+            const hashedPassword = String(process.env.SAMPLE_PASSWORD);
+            const verdict = await bcrypt.compare(plainPassword.plainPassword, hashedPassword);
+
+            return { verdict: verdict };
+        }
+        catch (error) {
+            console.error('Password process failed. ', error);
+
+            throw error;
+        }
+    }
+}
+</file>
+
+<file path="src/modules/AccountDetails.module.ts">
+import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+
+export class UserAccountDetails {
+
+    public id!: number;
+
+    @IsString()
+    @Length(8, 16, { message: "Please provide a 8 to 16 characters" })
+    public username!: string;
+
+    @IsString()
+    @IsEmail({}, { message: 'Please provide a valid email address' })
+    public email!: string;
+
+    @IsString()
+    @IsNotEmpty({ message: "Please provide your first name" })
+    public firstName!: string;
+
+    @IsString()
+    @IsNotEmpty({ message: "Please provide your last name" })
+    public lastName!: string;
+
+    public hashedPassword!: string;
+    public middleInitial?: string;
+
+    constructor(data: Partial<UserAccountDetails>) {
+        Object.assign(this, data);
+    }
+
+    get fullName(): string {
+        const middle = this.middleInitial ? `${this.middleInitial}. ` : "";
+        return `${this.firstName} ${middle}${this.lastName}`;
+    }
+}
+
+export class UserPassword {
+    @IsString({message: "Password must be a combination of characters and numbers"})
+    @IsNotEmpty({message: "Password must not be empty!"})
+    @Length(8, 24, { message: "Please provide 8-24 characters" })
+    plainPassword: string;
+
+    constructor(plainPassword: string) {
+        this.plainPassword = plainPassword;
+    }
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js",
+    "build": "npx tsc src/index.ts",
+    "dev": "npx tsx src/index.ts",
+    "watch": "npx tsx watch src/index.ts",
+    "lint": "npx @biomejs/biome lint --write src",
+    "format": "npx @biomejs/biome format --write src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bullet162/project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/bullet162/project/issues"
+  },
+  "homepage": "https://github.com/bullet162/project#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.15",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.2.3",
+    "@types/swagger-ui-express": "^4.1.8",
+    "express": "^5.2.1",
+    "nodemon": "^3.1.11",
+    "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "dotenv": "^17.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
+</file>
+
+<file path="src/index.ts">
+import express from "express";
+import dotenv from 'dotenv';
+import { bcryptRouter } from "./routes/bcrypt.route";
+import "reflect-metadata";
+
+dotenv.config();
+
+const PORT = process.env.PORT || 3000;
+const app = express();
+
+app.use(express.json());
+
+
+app.get("/test", (req, res) => {
+	res.status(200).send({ message: ["healthy", 200] });
+});
+
+app.use("/security", bcryptRouter);
+
+app.listen(PORT, () => {
+	console.log(`Server listening: http://localhost:${PORT}`);
+});
+</file>
+
+<file path="tsconfig.json">
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "module": "es2022",
+    "target": "es2022",
+    "types": [
+      "reflect-metadata"
+    ],
+    // For nodejs:
+    "lib": [
+      "es2022"
+    ],
+    //"types": ["node"],
+    // and npm install -D @types/node
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // Style Options
+    // "noImplicitReturns": true,
+    // "noImplicitOverride": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    // "noPropertyAccessFromIndexSignature": true,
+    // Recommended Options
+    "strict": true,
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
+</file>
+
+</files>

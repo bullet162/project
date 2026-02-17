@@ -5,4 +5,4 @@ export interface ReturnValues {
     error: string,
     status: number
 }
-export type GlobalResponse = Partial<ReturnValues>;
+export type GlobalResponse = Partial<ReturnValues>; 

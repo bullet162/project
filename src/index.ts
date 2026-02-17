@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from 'dotenv';
 import { bcryptRouter } from "./routes/bcrypt.route";
-import { hostname } from "node:os";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -17,7 +17,15 @@ app.get("/test", (req, res) => {
 
 app.use("/password", bcryptRouter);
 
+const MONGO_URI = String(process.env.MONGO_URL_DEV);
+
+mongoose.connect(MONGO_URI)
+	.then(() => console.log('MongoDB Connected via Docker!'))
+	.catch((err) => console.error('MongoDB Connection Error:', err));
+
+
 const HOSTNAME = process.env.HOST || "localhost";
 app.listen(PORT, HOSTNAME, () => {
 	console.log(`Server listening: http://${HOSTNAME}:${PORT}`);
 });
+

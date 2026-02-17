@@ -10,6 +10,7 @@ export class UseBcrypt {
     async hashPassword(plainPassword: string): Promise<GlobalResponse> {
         try {
             const saltRounds = Number(process.env.SALT_ROUNDS) || 12;
+            const salt = await bcrypt.genSalt(saltRounds);
 
             if (!plainPassword || plainPassword === null) {
                 return {
@@ -21,7 +22,7 @@ export class UseBcrypt {
                 };
             }
 
-            const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
+            const hashedPassword = await bcrypt.hash(plainPassword, salt);
 
             return {
                 success: true,

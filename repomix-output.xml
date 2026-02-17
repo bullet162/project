@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Files matching these patterns are excluded: node_modules, dist, .gitignore, package-lock.json, README.md
+- Files matching these patterns are excluded: README.md, package-lock.json, dist, node_modules, .gitignore, .env
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -45,7 +45,7 @@ biome.json
 package.json
 src/controller/bcrypt.controller.ts
 src/index.ts
-src/middleware/validation.middleware.ts
+src/middleware/ResponseGlobal.middleware.ts
 src/modules/AccountDetails.module.ts
 src/routes/bcrypt.route.ts
 src/services/bcrypt.service.ts
@@ -55,31 +55,6 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="src/middleware/validation.middleware.ts">
-import { plainToInstance } from 'class-transformer';
-import { validate, ValidationError } from 'class-validator';
-import type { Request, Response, NextFunction } from 'express';
-
-export function validationMiddleware(type: any) {
-    return async (req: Request, res: Response, next: NextFunction) => {
-        const dtoInstance = plainToInstance(type, req.body);
-
-        const errors: ValidationError[] = await validate(dtoInstance);
-
-        if (errors.length > 0) {
-            const message = errors.map((error: ValidationError) =>
-                Object.values(error.constraints || {})
-            ).flat();
-
-            return res.status(400).json({ errors: message });
-        }
-
-        req.body = dtoInstance;
-        next();
-    };
-}
-</file>
 
 <file path="biome.json">
 {
@@ -122,91 +97,128 @@ export function validationMiddleware(type: any) {
 }
 </file>
 
-<file path="src/routes/bcrypt.route.ts">
-import { Router } from "express";
-import { IHashPassword, IVerifyPassword } from "../controller/bcrypt.controller";
-import { validationMiddleware } from "../middleware/validation.middleware";
-import { UserPassword } from "../modules/AccountDetails.module";
-
-export const bcryptRouter = Router();
-
-bcryptRouter.post('/registerPassword', validationMiddleware(UserPassword), IHashPassword);
-bcryptRouter.post('/verifyPassword', validationMiddleware(UserPassword), IVerifyPassword);
+<file path="src/middleware/ResponseGlobal.middleware.ts">
+export interface ReturnValues {
+    success: boolean,
+    data: string,
+    message: string,
+    error: string,
+    status: number
+}
+export type GlobalResponse = Partial<ReturnValues>;
 </file>
 
 <file path="src/views/index.html">
 
 </file>
 
-<file path="src/controller/bcrypt.controller.ts">
-import type { Request, Response } from "express";
-import { UseBcrypt } from "../services/bcrypt.service";
-import { error } from "node:console";
+<file path="src/routes/bcrypt.route.ts">
+import { Router } from 'express';
+import { IHashPassword, IVerifyPassword } from '../controller/bcrypt.controller';
 
-const bcrypt = new UseBcrypt();
+export const bcryptRouter = Router();
+
+bcryptRouter.post('/hash', IHashPassword);
+bcryptRouter.post('/verify', IVerifyPassword);
+</file>
+
+<file path="src/controller/bcrypt.controller.ts">
+import type { Request, Response, NextFunction } from "express";
+import { UseBcrypt } from "../services/bcrypt.service";
+
+const bcryptService = new UseBcrypt();
 
 export const IHashPassword = async (req: Request, res: Response) => {
     try {
         const { plainPassword } = req.body;
+        const result = await bcryptService.hashPassword(plainPassword);
 
-        const result = await bcrypt.hashPassword(plainPassword);
-
-        return res.status(201).json(result);
+        return res.status(result.status!).json(result);
+    } catch (error) {
+        return res.status(500).json(error);
     }
-    catch (error) {
-        return res.status(500).json({ error: "Internal Server Error" });
-    }
-}
+};
 
-export const IVerifyPassword = async (req: Request, res: Response) => {
+export const IVerifyPassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // hashedPassword property from database to be develop soon.
         const { plainPassword } = req.body;
+        const result = await bcryptService.VerifyPassword(plainPassword);
 
-        const result = await bcrypt.VerifyPassword(plainPassword);
-
-        return res.status(200).json(result);
+        return res.status(result.status!).json(result);
+    } catch (error) {
+        return res.status(500).json(error);
     }
-    catch (error) {
-        return res.status(500).json({ error: "Verification process failed" });
-    }
-}
+};
 </file>
 
 <file path="src/services/bcrypt.service.ts">
 import * as bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
-import { UserPassword } from '../modules/AccountDetails.module';
+import type { GlobalResponse } from '../middleware/ResponseGlobal.middleware';
+import { error } from 'node:console';
 dotenv.config();
 
 
 export class UseBcrypt {
 
-    async hashPassword(plainPassword: UserPassword): Promise<{ hashedPassword: string } | { error: string }> {
+    async hashPassword(plainPassword: string): Promise<GlobalResponse> {
         try {
             const saltRounds = Number(process.env.SALT_ROUNDS) || 12;
-            const hashedPassword = await bcrypt.hash(plainPassword.plainPassword, saltRounds);
 
-            return { hashedPassword: hashedPassword };
+            if (!plainPassword || plainPassword === null) {
+                return {
+                    success: false,
+                    data: "",
+                    message: "Password required",
+                    error: "Input is missing",
+                    status: 400
+                };
+            }
+
+            const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
+
+            return {
+                success: true,
+                data: hashedPassword,
+                message: "Password hashed successfully",
+                error: "none",
+                status: 200
+            };
         }
         catch (error) {
             console.error('Cannot encrypt password. ', error);
-
             throw error;
         }
     }
 
-    async VerifyPassword(plainPassword: UserPassword): Promise<{ verdict: boolean } | { error: string }> {
+    async VerifyPassword(plainPassword: string): Promise<GlobalResponse> {
         try {
-            //sample password but need database
-            const hashedPassword = String(process.env.SAMPLE_PASSWORD);
-            const verdict = await bcrypt.compare(plainPassword.plainPassword, hashedPassword);
 
-            return { verdict: verdict };
+            if (!plainPassword || plainPassword === null) {
+                return {
+                    success: false,
+                    data: "",
+                    message: "Password required",
+                    error: "Input is missing",
+                    status: 400
+                };
+            }
+
+            //sample password but need database
+            const hashedPassword: string = String(process.env.SAMPLE_PASSWORD);
+            const verdict: boolean = await bcrypt.compare(plainPassword, hashedPassword);
+            const message: string = verdict === true ? "Password verified" : "Incorrect password";
+            const status = verdict === true ? 200 : 401;
+
+            return {
+                success: verdict,
+                message: message,
+                error: "none",
+                status: status
+            };
         }
         catch (error) {
             console.error('Password process failed. ', error);
-
             throw error;
         }
     }
@@ -214,28 +226,13 @@ export class UseBcrypt {
 </file>
 
 <file path="src/modules/AccountDetails.module.ts">
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
-
 export class UserAccountDetails {
 
     public id!: number;
-
-    @IsString()
-    @Length(8, 16, { message: "Please provide a 8 to 16 characters" })
     public username!: string;
-
-    @IsString()
-    @IsEmail({}, { message: 'Please provide a valid email address' })
     public email!: string;
-
-    @IsString()
-    @IsNotEmpty({ message: "Please provide your first name" })
     public firstName!: string;
-
-    @IsString()
-    @IsNotEmpty({ message: "Please provide your last name" })
     public lastName!: string;
-
     public hashedPassword!: string;
     public middleInitial?: string;
 
@@ -250,9 +247,6 @@ export class UserAccountDetails {
 }
 
 export class UserPassword {
-    @IsString({message: "Password must be a combination of characters and numbers"})
-    @IsNotEmpty({message: "Password must not be empty!"})
-    @Length(8, 24, { message: "Please provide 8-24 characters" })
     plainPassword: string;
 
     constructor(plainPassword: string) {
@@ -317,24 +311,25 @@ export class UserPassword {
 import express from "express";
 import dotenv from 'dotenv';
 import { bcryptRouter } from "./routes/bcrypt.route";
-import "reflect-metadata";
+import { hostname } from "node:os";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const app = express();
 
 app.use(express.json());
 
 
 app.get("/test", (req, res) => {
-	res.status(200).send({ message: ["healthy", 200] });
+	res.status(200).send({ message: "Healthy", status: 200 });
 });
 
-app.use("/security", bcryptRouter);
+app.use("/password", bcryptRouter);
 
-app.listen(PORT, () => {
-	console.log(`Server listening: http://localhost:${PORT}`);
+const HOSTNAME = process.env.HOST || "localhost";
+app.listen(PORT, HOSTNAME, () => {
+	console.log(`Server listening: http://${HOSTNAME}:${PORT}`);
 });
 </file>
 
